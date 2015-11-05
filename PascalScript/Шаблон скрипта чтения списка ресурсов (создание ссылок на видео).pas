@@ -1,16 +1,8 @@
 ﻿// Глобальные переменные
 var
   gsUrlBase: String = 'http://site.com'; // База ссылки, для создания полных ссылок из относительных
-
-  gsHtml: String;   // Содержимое страницы сайта
-  gsLink: String;   // Ссылка на видео
-  gsName: String;   // Наименование видео
-  gsImg : String;   // Картинка превью (эскиз)
-  gsTime: String;   // Длительность видео
-
-  gsVal : String;   // Переменная для хранения временного значения строки
+  gsHtml, gsLink, gsName, gsImg, gsTime, gsVal : String;
   gnSec : Integer;  // Число секунд длительности видео 
-
   RegExp: TRegExpr; // Объект для поиска по регулярному выражению
   Item  : THmsScriptMediaItem; // Объект элемента базы данных программы 
   
@@ -23,7 +15,7 @@ begin
   gsHtml := HmsRemoveLinebreaks(gsHtml); // Удаляем переносы строк
 
   // Создаём объект для поиска по регулярному выражению
-  RegExp := TRegExpr.Create('media--sm-v(.*?)meta__item', PCRE_SINGLELINE);
+  RegExp := TRegExpr.Create('<section>(.*?)</section>', PCRE_SINGLELINE);
   
   // Организовываем цикл
   If RegExp.Search(gsHtml) Then Repeat

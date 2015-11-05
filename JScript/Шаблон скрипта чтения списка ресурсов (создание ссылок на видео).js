@@ -1,10 +1,5 @@
-﻿// Глобальные переменные
-string gsUrlBase = 'http://site.com'; // База ссылки, для создания полных ссылок из относительных
-string gsHtml, gsLink, gsName, gsImg, gsTime, gsVal;
-int    gnSec; // Число секунд длительности видео 
-TRegExpr RegExp;          // Объект для поиска по регулярному выражению
-THmsScriptMediaItem Item; // Объект элемента базы данных программы 
-  
+﻿gsUrlBase = 'http://site.com'; // База ссылки, для создания полных ссылок из относительных
+
 // ГЛАВНАЯ ПРОЦЕДУРА
 {
   FolderItem.DeleteChildItems();        // Очищаем существующие ссылки

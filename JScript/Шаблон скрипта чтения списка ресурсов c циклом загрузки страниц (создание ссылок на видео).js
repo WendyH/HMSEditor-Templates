@@ -1,13 +1,10 @@
-﻿string gsUrlBase = 'http://site.com'; int gnTotalItems = 0;
+﻿gsUrlBase    = 'http://site.com';
+gnTotalItems = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
 
 // Загрузка страниц и парсинг -------------------------------------------------
-void LoadAndParse() {
-  string sHtml, sData, sName, sLink, sImg, sYear, sTime, sVal; 
-  int i, nPages, nSec; TRegExpr RegEx;
-  THmsScriptMediaItem Item; // Объект элемента базы данных программы 
-
+function LoadAndParse() {
   sHtml  = ''; // Текст загруженных страниц сайта
   nPages = 2;  // Количество загружаемых страниц
 

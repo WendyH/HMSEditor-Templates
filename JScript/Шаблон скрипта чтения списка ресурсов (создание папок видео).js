@@ -1,13 +1,17 @@
-﻿string gsUrlBase = 'http://site.com'; int gnTotalItems = 0;
+﻿gsUrlBase    = 'http://site.com';
+gnTotalItems = 0;
 
-///////////////////////////////////////////////////////////////////////////////
+// Создание папки -------------------------------------------------------------
+function CreateFolder(sName, sLink, sImg) {
+  THmsScriptMediaItem Item = FolderItem.AddFolder(sLink); // Создаём папку с указанной ссылкой
+  Item[mpiTitle    ] = sName; // Присваиваем наименование
+  Item[mpiThumbnail] = sImg;  // Картинка
+  gnTotalItems++;             // Увеличиваем счетчик созданных элементов
+  return Item;                // Возвращаем созданный объект
+}
 
 // Загрузка страниц и парсинг -------------------------------------------------
-void LoadAndParse() {
-  string sHtml, sData, sName, sLink, sImg, sYear, sTime, sVal; 
-  int i, nPages, nSec; TRegExpr RegEx;
-  THmsScriptMediaItem Item; // Объект элемента базы данных программы 
-
+function LoadAndParse() {
   sHtml  = ''; // Текст загруженных страниц сайта
   nPages = 2;  // Количество загружаемых страниц
 
@@ -26,15 +30,14 @@ void LoadAndParse() {
   // Создаём объект RegEx для поиска по регулярному выражению
   RegEx = TRegExpr.Create('<section>(.*?)</section>'); 
   try {
-    if (RegEx.Search(sHtml)) do {       // Если нашли совпадение, запускаем цикл
-      sLink=""; sName=""; sImg=""; sYear=""; sTime="";     // Очищаем значения после последнего цикла
+    if (RegEx.Search(sHtml)) do {            // Если нашли совпадение, запускаем цикл
+      sLink=''; sName=''; sImg=''; sYear=''; // Очищаем переменные от предыдущих значений
 
       // Получаем значения в переменные по регулярным выражениям
       HmsRegExMatch('<a[^>]+href="(.*?)"'  , RegEx.Match, sLink); // Ссылка
       HmsRegExMatch('(<a[^>]+href=.*?</a>)', RegEx.Match, sName); // Наименование
       HmsRegExMatch('<img[^>]+src="(.*?)"' , RegEx.Match, sImg ); // Картинка
-      HmsRegExMatch('year.*?(\\d{4})'      , RegEx.Match, sYear); // Год
-      HmsRegExMatch('duration.*?>(.*?)<'   , RegEx.Match, sTime); // Длительность
+      HmsRegExMatch('(\\d{4})\\)'          , sName      , sYear); // Год
 
       if (sLink=='') continue;          // Если нет ссылки, значит что-то не так
        
@@ -46,18 +49,7 @@ void LoadAndParse() {
       // Если в названии нет года, добавляем год выхода 
       if ((sYear!='') && (Pos(sYear, sName)<1)) sName += ' ('+sYear+')';
 
-      // Вычисляем длительность в секундах из того формата, который на сайте (m:ss)
-      nSec = 0;
-      if (HmsRegExMatch('(\\d+):', sTime, sVal)) nSec += StrToInt(sVal) * 60; // Минуты 
-      if (HmsRegExMatch(':(\\d+)', sTime, sVal)) nSec += StrToInt(sVal);      // Секунды 
-      if (nSec == 0) nSec = 6000; // Если длительность нет - ставим по-умолчанию 01:40:00 (100 мин)
-
-      // Создаём элемент медиа-ссылки
-      Item = HmsCreateMediaItem(sLink, FolderItem.ItemID); // Создаём элемент подкаста
-      Item.Properties[mpiTitle     ] = sName; // Наименование 
-      Item.Properties[mpiThumbnail ] = sImg;  // Картинка 
-      Item.Properties[mpiYear      ] = sYear; // Год 
-      Item.Properties[mpiTimeLength] = nSec;  // Длительность 
+      CreateFolder(sName, sLink, sImg); // Вызываем функцию создания папки видео
                                       
     } while (RegEx.SearchAgain);        // Повторяем цикл, если найдено следующее совпадение
   
