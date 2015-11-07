@@ -1,5 +1,5 @@
-﻿// Глобальные переменные
-var
+﻿// Объявление глобальных переменных
+Var
   gsUrlBase: String = 'http://site.com'; // База ссылки, для создания полных ссылок из относительных
   gnTotalItems: Integer = 0;             // Количество созданных элементов
   
@@ -25,7 +25,9 @@ Begin
   sHtml  := "";
   nPages := 2;  // Количество загружаемых страниц
 
-  // Загружаем первые сколько-то страниц
+  // Загружаем первые сколько-то страниц (указано в nPages)
+  // В зависимости от того, как именно на конкретном сайте выглядят ссылки последующих
+  // страниц, возможно потребуедтся изменить формирование ссылки '/page/'+...
   For i := 1 To nPages Do Begin
     HmsSetProgress(Trunc(i*100/nPages));                   // Устанавливаем позицию прогресса загрузки 
     sName := Format('%s: Страница %d из %d', [mpTitle, i, nPages]); // Формируем заголовок прогресса
@@ -39,34 +41,40 @@ Begin
   sHtml := HmsUtf8Decode(sHtml);         // Перекодируем текст из UTF-8
   sHtml := HmsRemoveLinebreaks(sHtml);   // Удаляем переносы строк
 
-  // Создаём объект для поиска по регулярному выражению
-  RegEx := TRegExpr.Create('<section>(.*?)<section>', PCRE_SINGLELINE);
+  // Создаём объект для поиска блоков текста по регулярному выражению,
+  // в которых есть информация: ссылка, наименование, ссылка на картинку и проч.
+  // Обычно, определяем начало и конец блока и вставляем их вместо <section> и </section>
+  RegEx := TRegExpr.Create('<section>(.*?)</section>', PCRE_SINGLELINE);
   
-  // Организовываем цикл
-  If RegEx.Search(sHtml) Then Repeat
-    sLink:=""; sName:=""; sImg:=""; sYear:=""; // Очищаем значения после последнего цикла
-  
-    // Получаем данные о видео
-    HmsRegExMatch('<a[^>]+href=[''"](.*?)[''"]' , RegEx.Match, sLink); // Ссылка
-    HmsRegExMatch('alt="(.*?)"'                 , RegEx.Match, sName); // Наименование
-    HmsRegExMatch('<img[^>]+src=[''"](.*?)[''"]', RegEx.Match, sImg ); // Картинка
-    HmsRegExMatch('year.*?(\d{4})'              , RegEx.Match, sYear); // Год
-    
-    sName := HmsHtmlToText(sName);            // Избавляемся от html тегов в названии 
-    sLink := HmsExpandLink(sLink, gsUrlBase); // Делаем из относительных ссылок абсолютные
-    sImg  := HmsExpandLink(sImg , gsUrlBase);
+  Try
+    // Организуем цикл поиска блоков текста в gsHtml
+    If RegEx.Search(sHtml) Then Repeat   // Если Search(...) вернёт True (найдёт) - выполним цикл Repeat
+      sLink:=""; sName:=""; sImg:=""; sYear:=""; // Очищаем значения после последнего цикла
 
-    // Если в названии нет года, добавляем год выхода 
-    If (sYear<>'') AND (Pos(sYear, sName) < 1) Then sName := sName + ' ('+sYear+')';
+      // Получаем данные о видео
+      HmsRegExMatch('<a[^>]+href=[''"](.*?)[''"]' , RegEx.Match, sLink); // Ссылка
+      HmsRegExMatch('(<h\d.*?</h\d>)'             , RegEx.Match, sName); // Наименование
+      HmsRegExMatch('<img[^>]+src=[''"](.*?)[''"]', RegEx.Match, sImg ); // Картинка
+      HmsRegExMatch('year.*?(\d{4})'              , RegEx.Match, sYear); // Год
     
-    // Создаём папку видео
-    CreateFolder(sName, sLink);
+      sName := HmsHtmlToText(sName);            // Избавляемся от html тегов в названии 
+      sLink := HmsExpandLink(sLink, gsUrlBase); // Делаем из относительных ссылок абсолютные
+      sImg  := HmsExpandLink(sImg , gsUrlBase);
 
-    Inc(gnTotalItems);         // Увеличиваем счетчик созданных элементов
+      // Если в названии нет года, добавляем год выхода 
+      If (sYear<>'') AND (Pos(sYear, sName) < 1) Then sName := sName + ' ('+sYear+')';
     
-  Until Not RegEx.SearchAgain; // Повторять цикл пока SearchAgain возвращает True 
+      // Создаём папку видео
+      CreateFolder(sName, sLink);
 
-  RegEx.Free; // Освобождаем созданный объект из памяти
+      Inc(gnTotalItems);         // Увеличиваем счетчик созданных элементов
+    
+    Until Not RegEx.SearchAgain; // Повторять цикл пока SearchAgain возвращает True 
+
+  Finally
+    RegEx.Free; // Освобождаем созданный объект из памяти
+
+  End;
 
   HmsLogMessage(1, mpTitle+': создано элементов - '+Str(gnTotalItems)); 
 End;

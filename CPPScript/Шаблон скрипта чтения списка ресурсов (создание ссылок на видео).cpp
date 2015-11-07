@@ -13,34 +13,37 @@ THmsScriptMediaItem Item; // Объект элемента базы данных
   gsHtml = HmsUtf8Decode(gsHtml);       // Перекодируем текст из UTF-8
   gsHtml = HmsRemoveLinebreaks(gsHtml); // Удаляем переносы строк
 
-  // Создаём объект для поиска по регулярному выражению
+  // Создаём объект для поиска блоков текста по регулярному выражению,
+  // в которых есть информация: ссылка, наименование, ссылка на картинку и проч.
+  // Обычно, определяем начало и конец блока и вставляем их вместо <section> и </section>
   RegExp = TRegExpr.Create('<section>(.*?)</section>', PCRE_SINGLELINE);
-  
-  // Организовываем цикл
-  if (RegExp.Search(gsHtml)) do {
+  try {
+    // Организуем цикл поиска блоков текста в gsHtml
+    if (RegExp.Search(gsHtml)) do {
 
-    // Получаем данные о видео
-    HmsRegExMatch('<a[^>]+href=[\'"](.*?)[\'"]' , RegExp.Match, gsLink); // Ссылка
-    HmsRegExMatch('(<h4.*</h4>)'                , RegExp.Match, gsName); // Наименование
-    HmsRegExMatch('<img[^>]+src=[\'"](.*?)[\'"]', RegExp.Match, gsImg ); // Картинка
-    HmsRegExMatch('duration.*?>(.*?)<'          , RegExp.Match, gsTime); // Длительность
-    
-    gsName = HmsHtmlToText(gsName);            // Избавляемся от html тегов в названии 
-    gsLink = HmsExpandLink(gsLink, gsUrlBase); // Делаем из относительных ссылок абсолютные
-    gsImg  = HmsExpandLink(gsImg , gsUrlBase);
+      // Получаем данные о видео
+      HmsRegExMatch('<a[^>]+href=[\'"](.*?)[\'"]' , RegExp.Match, gsLink); // Ссылка
+      HmsRegExMatch('(<h4.*</h4>)'                , RegExp.Match, gsName); // Наименование
+      HmsRegExMatch('<img[^>]+src=[\'"](.*?)[\'"]', RegExp.Match, gsImg ); // Картинка
+      HmsRegExMatch('duration.*?>(.*?)<'          , RegExp.Match, gsTime); // Длительность
 
-    // Вычисляем длительность в секундах из того формата, который на сайте (m:ss)
-    gnSec = 0;
-    if (HmsRegExMatch('(\\d+):', gsTime, gsVal)) gnSec += StrToInt(gsVal) * 60; // Минуты 
-    if (HmsRegExMatch(':(\\d+)', gsTime, gsVal)) gnSec += StrToInt(gsVal);      // Секунды 
+      gsName = HmsHtmlToText(gsName);            // Избавляемся от html тегов в названии 
+      gsLink = HmsExpandLink(gsLink, gsUrlBase); // Делаем из относительных ссылок абсолютные
+      gsImg  = HmsExpandLink(gsImg , gsUrlBase);
 
-    // Создаём элемент медиа-ссылки
-    Item = HmsCreateMediaItem(gsLink, FolderItem.ItemID); // Создаём элемент подкаста
-    Item.Properties[mpiTitle     ] = gsName; // Наименование 
-    Item.Properties[mpiThumbnail ] = gsImg;  // Картинка 
-    Item.Properties[mpiTimeLength] = gnSec;  // Длительность 
+      // Вычисляем длительность в секундах из того формата, который на сайте (m:ss)
+      gnSec = 0;
+      if (HmsRegExMatch('(\\d+):', gsTime, gsVal)) gnSec += StrToInt(gsVal) * 60; // Минуты 
+      if (HmsRegExMatch(':(\\d+)', gsTime, gsVal)) gnSec += StrToInt(gsVal);      // Секунды 
 
-  } while (RegExp.SearchAgain); // Повторять цикл пока SearchAgain возвращает True 
+      // Создаём элемент медиа-ссылки
+      Item = HmsCreateMediaItem(gsLink, FolderItem.ItemID); // Создаём элемент подкаста
+      Item.Properties[mpiTitle     ] = gsName; // Наименование 
+      Item.Properties[mpiThumbnail ] = gsImg;  // Картинка 
+      Item.Properties[mpiTimeLength] = gnSec;  // Длительность 
 
-  RegExp.Free(); // Освобождаем созданный объект из памяти
+    } while (RegExp.SearchAgain); // Повторять цикл пока SearchAgain возвращает True 
+
+  } finally { RegExp.Free; }      // Что бы ни случилось, освобождаем объект из памяти
+
 }

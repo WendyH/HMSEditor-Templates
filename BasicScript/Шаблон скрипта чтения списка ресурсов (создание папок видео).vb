@@ -21,7 +21,9 @@ SUB LoadPagesAndCreateLinks
   sHtml  = ""
   nPages = 2  ' Количество загружаемых страниц
 
-  ' Загружаем первые сколько-то страниц
+  ' Загружаем первые сколько-то страниц (указано в nPages)
+  ' В зависимости от того, как именно на конкретном сайте выглядят ссылки последующих
+  ' страниц, возможно потребуедтся изменить формирование ссылки '/page/'+...
   FOR i = 1 TO nPages
     HmsSetProgress(Trunc(i*100/nPages))                   ' Устанавливаем позицию прогресса загрузки 
     sName = Format("%s: Страница %d из %d", [mpTitle, i, nPages]) ' Формируем заголовок прогресса
@@ -35,10 +37,12 @@ SUB LoadPagesAndCreateLinks
   sHtml = HmsUtf8Decode(sHtml)        ' Перекодируем текст из UTF-8
   sHtml = HmsRemoveLinebreaks(sHtml)  ' Удаляем переносы строк
 
-  ' Создаём объект для поиска по регулярному выражению
-  RegEx = TRegExpr.Create("<section>(.*?)<section>", PCRE_SINGLELINE)
+  ' Создаём объект для поиска блоков текста по регулярному выражению,
+  ' в которых есть информация: ссылка, наименование, ссылка на картинку и проч.
+  ' Обычно, определяем начало и конец блока и вставляем их вместо <section> и </section>
+  RegEx = TRegExpr.Create("<section>(.*?)</section>", PCRE_SINGLELINE)
   
-  ' Организовываем цикл
+  ' Организуем цикл поиска блоков текста в gsHtml
   IF RegEx.Search(sHtml) THEN
     DO
     sLink = ""
