@@ -28,7 +28,8 @@ SUB LoadPagesAndCreateLinks
     HmsSetProgress(Trunc(i*100/nPages))                   ' Устанавливаем позицию прогресса загрузки 
     sName = Format("%s: Страница %d из %d", [mpTitle, i, nPages]) ' Формируем заголовок прогресса
     HmsShowProgress(sName)                                ' Показываем окно прогресса выполнения
-    sLink = mpFilePath+"/page/"+IntToStr(i)+"/"           ' Формируем ссылку для загрузки, включающую номер страницы
+    sLink = mpFilePath;
+    IF i > 1 THEN sLink = sLink+"/page/"+IntToStr(i)+"/"; ' Формируем ссылку для загрузки, включающую номер страницы    
     sHtml = sHtml + HmsUtf8Decode(HmsDownloadUrl(sLink))  ' Загружаем страницу
     IF HmsCancelPressed THEN BREAK                        ' Если в окне прогресса нажали "Отмена" - прерываем цикл
   NEXT

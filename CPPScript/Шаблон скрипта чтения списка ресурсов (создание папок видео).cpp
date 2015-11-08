@@ -24,7 +24,8 @@ void LoadAndParse() {
     HmsSetProgress(Trunc(i*100/nPages));          // Устанавливаем позицию прогресса загрузки 
     sName = Format('%s: Страница %d из %d', [mpTitle, i, nPages]); // Формируем заголовок прогресса
     HmsShowProgress(sName);                       // Показываем окно прогресса выполнения
-    sLink = mpFilePath+'/page/'+IntToStr(i)+'/';  // Формируем ссылку для загрузки, включающую номер страницы
+    sLink = mpFilePath;
+    If (i > 1) sLink += '/page/'+IntToStr(i)+'/'; // Формируем ссылку для загрузки, включающую номер страницы    
     sHtml+= HmsUtf8Decode(HmsDownloadUrl(sLink)); // Загружаем страницу
     if (HmsCancelPressed()) break;                // Если в окне прогресса нажали "Отмена" - прерываем цикл
   }
