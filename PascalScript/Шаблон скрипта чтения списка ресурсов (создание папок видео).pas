@@ -2,15 +2,17 @@
 Var
   gsUrlBase: String = 'http://site.com'; // База ссылки, для создания полных ссылок из относительных
   gnTotalItems: Integer = 0;             // Количество созданных элементов
-  
+  gStart: TDateTime     = Now;           // Время старта скрипта
+
 ///////////////////////////////////////////////////////////////////////////////
 
 // ---- Создание папки --------------------------------------------------------
 Function CreateFolder(sName, sLink: String; sImg: String = ''): THmsScriptMediaItem;
 Begin
   Result := FolderItem.AddFolder(sLink);    // Создаём папку с указанной ссылкой
-  Result.Properties[mpiTitle    ] := sName; // Присваиваем наименование
-  Result.Properties[mpiThumbnail] := sImg;  // Картинка
+  Result.Properties[mpiTitle     ] := sName; // Присваиваем наименование
+  Result.Properties[mpiThumbnail ] := sImg;  // Картинка
+  Result.Properties[mpiCreateDate] := DateTimeToStr(IncTime(gStart, 0, -gnTotalItems, 0, 0)); // Для обратной сортировки по дате создания
   Inc(gnTotalItems); // Увеличиваем счетчик созданных элементов
 End;
 
@@ -18,26 +20,40 @@ End;
 Procedure LoadPagesAndCreateLinks();
 Var
   sHtml, sData, sName, sLink, sImg, sYear, sVal: String; 
-  i, nPages, nSec: Integer; RegEx: TRegExpr;
+  i, nPages, nSec: Integer; RegEx: TRegExpr; bPagesGotten: Boolean;
   Item: THmsScriptMediaItem;  // Объект элемента базы данных программы 
 Begin
   
-  sHtml  := "";
-  nPages := 2;  // Количество загружаемых страниц
+  sHtml     := "";
+  nPages    :=  2; // Количество загружаемых страниц
+  nMaxPages := 50; // Максимальное ограничение количества загружаемых страниц
+  bPagesGotten := False; // Если не хотим искать количество страниц для загрузки из загруженной первой страницы, то установить в True.
+
+  // Если в параметрах подкаста указаны значения - устанавливаем оттуда
+  If HmsRegExMatch('-pages=(\d+)'   , mpPodcastParameters, sVal) Then nPages    := StrToInt(sVal);
+  If HmsRegExMatch('-maxpages=(\d+)', mpPodcastParameters, sVal) Then nMaxPages := StrToInt(sVal);
 
   // Загружаем первые сколько-то страниц (указано в nPages)
   // В зависимости от того, как именно на конкретном сайте выглядят ссылки последующих
-  // страниц, возможно потребуедтся изменить формирование ссылки '/page/'+...
+  // страниц, возможно потребуедтся изменить формирование ссылки 'page/'+...
+  // ------------- Цикл загрузки страниц ------------------
   For i := 1 To nPages Do Begin
     HmsSetProgress(Trunc(i*100/nPages));                   // Устанавливаем позицию прогресса загрузки 
     sName := Format('%s: Страница %d из %d', [mpTitle, i, nPages]); // Формируем заголовок прогресса
     HmsShowProgress(sName);                                // Показываем окно прогресса выполнения
-    sLink := mpFilePath;
-    If i > 1 Then sLink := sLink+'/page/'+IntToStr(i)+'/'; // Формируем ссылку для загрузки, включающую номер страницы    
+    sLink := mpFilePath;                                   // По-умолчнанию ссылка для загрузки равна ссылке подкаста
+    If i > 1 Then sLink := sLink+'page/'+IntToStr(i)+'/';  // Если это следующая страница, добавляем часть ссылки включающую номер страницы
     sHtml := sHtml + HmsUtf8Decode(HmsDownloadUrl(sLink)); // Загружаем страницу
     If HmsCancelPressed Then Break;                        // Если в окне прогресса нажали "Отмена" - прерываем цикл
+    If Not bPagesGotten Then Begin                         // Если мы ещё не определяли сколько страниц загружать, пробуем найти в загруженной странице
+      If HmsRegExMatch('.*/page/(\d+)/">\d+</a>', sHtml, sVal) Then nPages := StrToInt(sVal);
+      nPages := Min(nPages, nMaxPages);                    // Ограничиваем количество страниц значением nMaxPages
+      bPagesGotten := True;                                // Устанавливаем флаг, что мы уже пробовали определять количество страниц
+    End;
+    If i >= nPages Then Break;
   End;
-  HmsHideProgress;                       // Убираем окно прогресса с экрана
+  HmsHideProgress; // Убираем окно прогресса с экрана
+  // ------------------------------------------------------
 
   sHtml := HmsUtf8Decode(sHtml);         // Перекодируем текст из UTF-8
   sHtml := HmsRemoveLinebreaks(sHtml);   // Удаляем переносы строк

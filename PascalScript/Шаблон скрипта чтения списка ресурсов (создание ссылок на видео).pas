@@ -1,10 +1,12 @@
 ﻿// Объявление глобальных переменных
 Var
   gsUrlBase: String = 'http://site.com'; // База ссылки, для создания полных ссылок из относительных
-  gsHtml, gsLink, gsName, gsImg, gsTime, gsVal : String;
-  gnSec : Integer;  // Число секунд длительности видео 
-  RegExp: TRegExpr; // Объект для поиска по регулярному выражению
+  gStart: TDateTime = Now;     // Время старта скрипта
+  gnTotalItems: Integer = 0;   // Счетчик количества созданных элементов
+  gnSec : Integer;             // Число секунд длительности видео 
+  RegExp: TRegExpr;            // Объект для поиска по регулярному выражению
   Item  : THmsScriptMediaItem; // Объект элемента базы данных программы 
+  gsHtml, gsLink, gsName, gsImg, gsTime, gsVal : String;
   
 // ГЛАВНАЯ ПРОЦЕДУРА
 Begin
@@ -43,6 +45,9 @@ Begin
       Item.Properties[mpiTitle     ] := gsName; // Наименование 
       Item.Properties[mpiThumbnail ] := gsImg;  // Картинка 
       Item.Properties[mpiTimeLength] := gnSec;  // Длительность 
+      Item.Properties[mpiCreateDate] := DateTimeToStr(IncTime(gStart, 0, -gnTotalItems, 0, 0)); // Для обратной сортировки по дате создания
+
+      Inc(gnTotalItems); // Увеличиваем счетчик созданных элементов
 
     Until Not RegExp.SearchAgain; // Повторять цикл пока SearchAgain возвращает True 
   
@@ -50,5 +55,5 @@ Begin
     RegExp.Free; // Освобождаем созданный объект из памяти
 
   End;
-  
+  HmsLogMessage(1, mpTitle+': создано элементов - '+Str(gnTotalItems)); 
 End.
