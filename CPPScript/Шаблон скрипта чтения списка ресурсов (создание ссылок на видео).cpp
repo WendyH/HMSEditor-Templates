@@ -1,21 +1,17 @@
 ﻿// Глобальные переменные
 string gsUrlBase = 'http://site.com'; // База ссылки, для создания полных ссылок из относительных
 string gsHtml, gsLink, gsName, gsImg, gsTime, gsVal;
-int    gnSec; // Число секунд длительности видео 
-TRegExpr RegExp;          // Объект для поиска по регулярному выражению
-THmsScriptMediaItem Item; // Объект элемента базы данных программы 
+TRegExpr RegExp; THmsScriptMediaItem Item;
   
+///////////////////////////////////////////////////////////////////////////////
 // ГЛАВНАЯ ПРОЦЕДУРА
 {
-  FolderItem.DeleteChildItems();        // Очищаем существующие ссылки
+  FolderItem.DeleteChildItems(); // Очищаем существующие ссылки
+  gsTime = '02:00:00.000';       // Длительность по-умолчанию
+  gsHtml = HmsUtf8Decode(HmsDownloadUrl(mpFilePath)); // Загрузка страницы
+  gsHtml = HmsRemoveLinebreaks(gsHtml);               // Удаляем переносы строк
 
-  gsHtml = HmsDownloadUrl(mpFilePath);  // Загрузка страницы по ссылке
-  gsHtml = HmsUtf8Decode(gsHtml);       // Перекодируем текст из UTF-8
-  gsHtml = HmsRemoveLinebreaks(gsHtml); // Удаляем переносы строк
-
-  // Создаём объект для поиска блоков текста по регулярному выражению,
-  // в которых есть информация: ссылка, наименование, ссылка на картинку и проч.
-  // Обычно, определяем начало и конец блока и вставляем их вместо <section> и </section>
+  // Поиск блоков текста по регулярному выражению
   RegExp = TRegExpr.Create('<section>(.*?)</section>', PCRE_SINGLELINE);
   try {
     // Организуем цикл поиска блоков текста в gsHtml
@@ -31,16 +27,11 @@ THmsScriptMediaItem Item; // Объект элемента базы данных
       gsLink = HmsExpandLink(gsLink, gsUrlBase); // Делаем из относительных ссылок абсолютные
       gsImg  = HmsExpandLink(gsImg , gsUrlBase);
 
-      // Вычисляем длительность в секундах из того формата, который на сайте (m:ss)
-      gnSec = 0;
-      if (HmsRegExMatch('(\\d+):', gsTime, gsVal)) gnSec += StrToInt(gsVal) * 60; // Минуты 
-      if (HmsRegExMatch(':(\\d+)', gsTime, gsVal)) gnSec += StrToInt(gsVal);      // Секунды 
-
       // Создаём элемент медиа-ссылки
       Item = HmsCreateMediaItem(gsLink, FolderItem.ItemID); // Создаём элемент подкаста
-      Item.Properties[mpiTitle     ] = gsName; // Наименование 
-      Item.Properties[mpiThumbnail ] = gsImg;  // Картинка 
-      Item.Properties[mpiTimeLength] = gnSec;  // Длительность 
+      Item[mpiTitle     ] = gsName; // Наименование 
+      Item[mpiThumbnail ] = gsImg;  // Картинка 
+      Item[mpiTimeLength] = gsTime; // Длительность 
 
     } while (RegExp.SearchAgain); // Повторять цикл пока SearchAgain возвращает True 
 
