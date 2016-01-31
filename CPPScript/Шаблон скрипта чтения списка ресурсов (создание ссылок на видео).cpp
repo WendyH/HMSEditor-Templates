@@ -1,40 +1,53 @@
 ﻿// Глобальные переменные
-string gsUrlBase = 'http://site.com'; // База ссылки, для создания полных ссылок из относительных
-string gsHtml, gsLink, gsName, gsImg, gsTime, gsVal;
-TRegExpr RegExp; THmsScriptMediaItem Item;
-  
+string gsUrlBase    = 'http://site.com'; // База ссылки, для создания полных ссылок из относительных
+int    gnTotalItems = 0; // Количество созданных ссылок
+
 ///////////////////////////////////////////////////////////////////////////////
-// ГЛАВНАЯ ПРОЦЕДУРА
-{
-  FolderItem.DeleteChildItems(); // Очищаем существующие ссылки
-  gsTime = '02:00:00.000';       // Длительность по-умолчанию
-  gsHtml = HmsUtf8Decode(HmsDownloadUrl(mpFilePath)); // Загрузка страницы
-  gsHtml = HmsRemoveLinebreaks(gsHtml);               // Удаляем переносы строк
+// Поиск и создание ссылок на видео
+void CreateLinks() {
+  string sHtml, sLink, sName, sImg, sTime, sVal;
+  TRegExpr RegExp; THmsScriptMediaItem Item;
+
+  sTime = '02:00:00.000';       // Длительность по-умолчанию
+  sHtml = HmsUtf8Decode(HmsDownloadUrl(mpFilePath)); // Загрузка страницы
+  sHtml = HmsRemoveLinebreaks(sHtml);                // Удаляем переносы строк
 
   // Поиск блоков текста по регулярному выражению
   RegExp = TRegExpr.Create('<section>(.*?)</section>', PCRE_SINGLELINE);
   try {
     // Организуем цикл поиска блоков текста в gsHtml
-    if (RegExp.Search(gsHtml)) do {
+    if (RegExp.Search(sHtml)) do {
 
       // Получаем данные о видео
-      HmsRegExMatch('<a[^>]+href=[\'"](.*?)[\'"]' , RegExp.Match, gsLink); // Ссылка
-      HmsRegExMatch('(<h4.*</h4>)'                , RegExp.Match, gsName); // Наименование
-      HmsRegExMatch('<img[^>]+src=[\'"](.*?)[\'"]', RegExp.Match, gsImg ); // Картинка
-      HmsRegExMatch('duration.*?>(.*?)<'          , RegExp.Match, gsTime); // Длительность
+      HmsRegExMatch('<a[^>]+href=[\'"](.*?)[\'"]' , RegExp.Match, sLink); // Ссылка
+      HmsRegExMatch('(<h4.*</h4>)'                , RegExp.Match, sName); // Наименование
+      HmsRegExMatch('<img[^>]+src=[\'"](.*?)[\'"]', RegExp.Match, sImg ); // Картинка
+      HmsRegExMatch('duration.*?>(.*?)<'          , RegExp.Match, sTime); // Длительность
 
-      gsName = HmsHtmlToText(gsName);            // Избавляемся от html тегов в названии 
-      gsLink = HmsExpandLink(gsLink, gsUrlBase); // Делаем из относительных ссылок абсолютные
-      gsImg  = HmsExpandLink(gsImg , gsUrlBase);
+      sName = HmsHtmlToText(sName);            // Избавляемся от html тегов в названии
+      sLink = HmsExpandLink(sLink, gsUrlBase); // Делаем из относительных ссылок абсолютные
+      sImg  = HmsExpandLink(sImg , gsUrlBase);
 
       // Создаём элемент медиа-ссылки
-      Item = HmsCreateMediaItem(gsLink, FolderItem.ItemID); // Создаём элемент подкаста
-      Item[mpiTitle     ] = gsName; // Наименование 
-      Item[mpiThumbnail ] = gsImg;  // Картинка 
-      Item[mpiTimeLength] = gsTime; // Длительность 
+      Item = HmsCreateMediaItem(sLink, FolderItem.ItemID); // Создаём элемент подкаста
+      Item[mpiTitle     ] = sName; // Наименование
+      Item[mpiThumbnail ] = sImg;  // Картинка
+      Item[mpiTimeLength] = sTime; // Длительность
+      gnTotalItems++;
 
-    } while (RegExp.SearchAgain); // Повторять цикл пока SearchAgain возвращает True 
+    } while (RegExp.SearchAgain); // Повторять цикл пока SearchAgain возвращает True
 
   } finally { RegExp.Free; }      // Что бы ни случилось, освобождаем объект из памяти
 
+  HmsLogMessage(1, mpTitle+": Создано элементов - "+Str(gnTotalItems));
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+//                    Г Л А В Н А Я     П Р О Ц Е Д У Р А                    //
+{
+  FolderItem.DeleteChildItems(); // Очищаем существующие ссылки
+
+  CreateLinks(); // Создаём ссылки
 }
