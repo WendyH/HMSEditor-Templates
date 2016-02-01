@@ -127,7 +127,7 @@ bool GetLink_Youtube31(string sLink) {
   // Если есть субтитры и в дополнительных параметрах указано их показывать - загружаем 
   if (bSubtitles && (ttsUrl!='')) {
     sFile = HmsSubtitlesDirectory+'\\Youtube\\'+PodcastItem.ItemID+'.'+sSubtitlesLanguage+'.srt';
-    sLink = ttsUrl+'&format=srt&lang='; 
+    sLink = ttsUrl+'&fmt=srt&lang='; 
     if (!HmsDownloadURLToFile(sLink+sSubtitlesLanguage, sFile, 'Accept-Encoding: gzip, deflate')) {
       HmsDownloadURLToFile(sLink+'en'                 , sFile, 'Accept-Encoding: gzip, deflate');
     }

@@ -134,7 +134,7 @@ Begin
   // Если есть субтитры и в дополнительных параметрах указано их показывать - загружаем 
   If (bSubtitles AND (ttsUrl<>'')) Then Begin
     sFile := HmsSubtitlesDirectory+'\Youtube\'+PodcastItem.ItemID+'.'+sSubtitlesLanguage+'.srt';
-    sLink := ttsUrl+'&format=srt&lang='; 
+    sLink := ttsUrl+'&fmt=srt&lang='; 
     If Not HmsDownloadURLToFile(sLink+sSubtitlesLanguage, sFile, 'Accept-Encoding: gzip, deflate') Then
            HmsDownloadURLToFile(sLink+'en'              , sFile, 'Accept-Encoding: gzip, deflate');
     PodcastItem[mpiSubtitleLanguage] := sFile;
