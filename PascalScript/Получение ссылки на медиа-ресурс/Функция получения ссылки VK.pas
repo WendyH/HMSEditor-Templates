@@ -11,8 +11,9 @@ Begin
   host := ''; max_hd := '2';
 
   If Not HmsRegExMatch('vtag["'':=\s]+([0-9a-z]+)', sHtml, vtag) Then Begin
-    If HmsRegExMatch('<div style="position:absolute; top:50%; text-align:center; right:0pt; left:0pt;.*?>(.*?)</div>', sHtml, sLink) Then Begin
-      HmsLogMessage(2, PodcastItem.ItemOrigin.ItemParent[mpiTitle]+': vk.com сообщает - '+HmsHtmlToText(sLink));
+    If HmsRegExMatch('(<div[^>]+video_ext_msg.*?</div>)', sHtml, sLink) Then Begin
+      sLink = HmsHtmlToText(sLink);
+      HmsLogMessage(2, PodcastItem.ItemOrigin.ItemParent[mpiTitle]+': vk.com сообщает - '+sLink);
 
       sFileMP3 := HmsTempDirectory+'\\sa.mp3';
       sFileImg := HmsTempDirectory+'\\vkmsg_';

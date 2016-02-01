@@ -2,15 +2,17 @@
 bool GetLink_VK(char sLink) {
   char sHtml, sVal, host, uid, vkid, vtag, max_hd, no_flv, res;
   char ResolutionList='0:240, 1:360, 2:480, 3:720', sQAval, sQSel;
-  int i, n, iPriority=0, iMinPriority=99; bool bQualityLog = False;
+  int i, n, iPriority=0, iMinPriority=99; bool bQualityLog;
 
+  bQualityLog = (Pos('--qualitylog',   mpPodcastParameters)>0);
   sHtml = HmsDownloadURL(sLink, sLink, true);
   sHtml = ReplaceStr(sHtml, '\\', '');
   host  = ''; max_hd = '2';
 
   if (!HmsRegExMatch('vtag["\':=\\s]+([0-9a-z]+)', sHtml, vtag)) {
-    if (HmsRegExMatch('<div style="position:absolute; top:50%; text-align:center; right:0pt; left:0pt;.*?>(.*?)</div>', sHtml, sLink)) {
-      HmsLogMessage(2, PodcastItem.ItemOrigin.ItemParent[mpiTitle]+': vk.com сообщает - '+HmsHtmlToText(sLink));
+    if (HmsRegExMatch('(<div[^>]+video_ext_msg.*?</div>)', sHtml, sLink)) {
+      sLink = HmsHtmlToText(sLink);
+      HmsLogMessage(2, PodcastItem.ItemOrigin.ItemParent[mpiTitle]+': vk.com сообщает - '+sLink);
 
       char sFileMP3 = HmsTempDirectory+'\\sa.mp3';
       char sFileImg = HmsTempDirectory+'\\vkmsg_';

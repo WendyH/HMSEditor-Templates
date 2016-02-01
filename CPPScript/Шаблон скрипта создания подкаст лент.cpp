@@ -37,9 +37,9 @@ void CreateSearchFolder(THmsScriptMediaItem prntItem, char sTitle) {
   sScript = ReplaceStr(sScript, #160, ' ');
 
   // И меняем значения переменных на свои
-  ReplaceVarValue(sScript, 'gsSuggestQuery'  , 'http://bobfilm1.net/engine/ajax/search.php?query=');
-  ReplaceVarValue(sScript, 'gsSuggestRegExpr', '<span class="searchheading">(.*?)</span>');
-  ReplaceVarValue(sScript, 'gsSuggestMethod' , 'POST');
+//ReplaceVarValue(sScript, 'gsSuggestQuery'  , 'http://bobfilm1.net/engine/ajax/search.php?query=');
+//ReplaceVarValue(sScript, 'gsSuggestRegExpr', '<span class="searchheading">(.*?)</span>');
+//ReplaceVarValue(sScript, 'gsSuggestMethod' , 'POST');
   //sScript = ReplaceStr(sScript, 'gnSuggestNoUTFEnc = 0', 'gnSuggestNoUTFEnc = 1');
 
   Folder = prntItem.AddFolder(sTitle, true);

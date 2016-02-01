@@ -53,11 +53,11 @@ void LoadAndParse() {
   if (LeftCopy(mpFilePath, 4) != "http") {
     // Если нет ссылки - делаем поиск названия
     if (Length(mpTitle)<4) mpTitle += " :::";    // Фишка обхода ограничения на минимальную длину в 4 символа (двоеточие при самом поиске не учитывается)
-    HmsRegExMatch('//(.*?)/', gsUrlBase, sServ); // получаем доменное имя из gsUrlBase в sServ
+    HmsRegExMatch('//(.*)', gsUrlBase, sServ); // получаем доменное имя из gsUrlBase в sServ
     sPost = 'do=search&subaction=search&titleonly=3&story='+HmsHttpEncode(mpTitle);
-    sHtml = HmsSendRequestEx(sServ, '/index.php', 'POST',
+    sHtml = HmsSendRequestEx(sServ, '/index.php?do=search', 'POST',
                              'application/x-www-form-urlencoded; Charset=UTF-8', 
-                             gsUrlBase+'/\r\nAccept-Encoding: gzip, deflate', 
+                             gsUrlBase+'/\r\nAccept-Encoding: gzip, deflate\r\nOrigin: '+gsUrlBase, 
                              sPost, 80, 0, '', true);
     gnMaxPages = 1;
 
@@ -134,7 +134,7 @@ void LoadAndParse() {
         Folder = FolderItem.AddFolder(Format('%.2d', [nGrp])); 
       }
 
-      CreateFolder(Folder, sName, sLink); // Создание ссылки (папки с фильмом)
+      CreateFolder(Folder, sName, sLink, sImg); // Создание ссылки (папки с фильмом)
 
     } while (RegEx.SearchAgain);
   } finally { RegEx.Free(); }

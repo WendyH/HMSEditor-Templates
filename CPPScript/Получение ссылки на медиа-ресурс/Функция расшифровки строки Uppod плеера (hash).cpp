@@ -1,15 +1,13 @@
-﻿// ---- Раскодирование строки Uppod плеера с помощью hash ---------------------
+﻿///////////////////////////////////////////////////////////////////////////////
+// Раскодирование строки Uppod плеера с помощью hash
 string DecodeUppodTextHash(string sData) {
-  variant char1, char2, hash, tab_a, tab_b; int i;
-
+  string ch1, ch2, hash, tab_a, tab_b; int i;
   hash = "0123456789WGXMHRUZID=NQVBLihbzaclmepsJxdftioYkngryTwuvihv7ec41D6GpBtXx3QJRiN5WwMf=ihngU08IuldVHosTmZz9kYL2bayE";
-
   // Проверяем, может не нужно раскодировать (json или ссылка)
   if ((Pos("{", sData)>0) || (LeftCopy(sData, 4)=="http")) return HmsUtf8Decode(sData);
 
   sData = DecodeUppod_tr(sData, "r", "A");
-  
-  hash = ReplaceStr(hash, 'ih', '\n');
+  hash  = ReplaceStr(hash, 'ih', '\n');
   if (RightCopy(sData, 1)=='!') {
     sData = LeftCopy(sData, Length(sData)-1);
     tab_a = ExtractWord(4, hash, '\n');
@@ -21,17 +19,14 @@ string DecodeUppodTextHash(string sData) {
 
   sData = ReplaceStr(sData, "\n", "");
   for (i=1; i<=Length(tab_a); i++) {
-    char1 = Copy(tab_b, i, 1);
-    char2 = Copy(tab_a, i, 1);
-    sData = ReplaceStr(sData, char1, "___");
-    sData = ReplaceStr(sData, char2, char1);
-    sData = ReplaceStr(sData, "___", char2);
+    sData = ReplaceStr(sData, tab_b[i], "_"     );
+    sData = ReplaceStr(sData, tab_a[i], tab_b[i]);
+    sData = ReplaceStr(sData, "_"     , tab_a[i]);
   }
   sData = HmsUtf8Decode(HmsBase64Decode(sData));
   sData = ReplaceStr(sData, "hthp:", "http:");
   return sData;
 }
-
 string DecodeUppod_tr(string sData, string ch1, string ch2) {
   string s = ""; int i, loc3, nLen;
 
