@@ -44,29 +44,30 @@ SUB LoadPagesAndCreateLinks
   RegEx = TRegExpr.Create("<section>(.*?)</section>", PCRE_SINGLELINE)
   
   ' Организуем цикл поиска блоков текста в gsHtml
-  IF RegEx.Search(sHtml) THEN DO
-    sLink = ""
-    sName = ""
-    sImg  = ""
-    sYear = "" ' Очищаем значения после последнего цикла
+  IF RegEx.Search(sHtml) THEN
+    DO
+      sLink = ""
+      sName = ""
+      sImg  = ""
+      sYear = "" ' Очищаем значения после последнего цикла
   
-    ' Получаем данные о видео
-    HmsRegExMatch("<a[^>]+href=['""](.*?)['""]" , RegEx.Match, sLink) ' Ссылка
-    HmsRegExMatch("alt=""(.*?)"""               , RegEx.Match, sName) ' Наименование
-    HmsRegExMatch("<img[^>]+src=['""](.*?)['""]", RegEx.Match, sImg ) ' Картинка
-    HmsRegExMatch("year.*?(\d{4})"              , RegEx.Match, sYear) ' Год
+      ' Получаем данные о видео
+      HmsRegExMatch("<a[^>]+href=['""](.*?)['""]" , RegEx.Match, sLink) ' Ссылка
+      HmsRegExMatch("alt=""(.*?)"""               , RegEx.Match, sName) ' Наименование
+      HmsRegExMatch("<img[^>]+src=['""](.*?)['""]", RegEx.Match, sImg ) ' Картинка
+      HmsRegExMatch("year.*?(\d{4})"              , RegEx.Match, sYear) ' Год
     
-    sName = HmsHtmlToText(sName)             ' Избавляемся от html тегов в названии 
-    sLink = HmsExpandLink(sLink, gsUrlBase)  ' Делаем из относительных ссылок абсолютные
-    sImg  = HmsExpandLink(sImg , gsUrlBase)
+      sName = HmsHtmlToText(sName)             ' Избавляемся от html тегов в названии 
+      sLink = HmsExpandLink(sLink, gsUrlBase)  ' Делаем из относительных ссылок абсолютные
+      sImg  = HmsExpandLink(sImg , gsUrlBase)
 
-    ' Если в названии нет года, добавляем год выхода 
-    IF (sYear<>"") AND (Pos(sYear, sName) < 1) THEN sName = sName + " ("+sYear+")"
+      ' Если в названии нет года, добавляем год выхода 
+      IF (sYear<>"") AND (Pos(sYear, sName) < 1) THEN sName = sName + " ("+sYear+")"
     
-    ' Создаём папку видео
-    CreateFolder(sName, sLink, sImg)
+      ' Создаём папку видео
+      CreateFolder(sName, sLink, sImg)
 
-    Inc(gnTotalItems)      ' Увеличиваем счетчик созданных элементов
+      Inc(gnTotalItems)      ' Увеличиваем счетчик созданных элементов
     
     LOOP WHILE RegEx.SearchAgain  ' Повторять цикл пока SearchAgain возвращает True 
   END IF
