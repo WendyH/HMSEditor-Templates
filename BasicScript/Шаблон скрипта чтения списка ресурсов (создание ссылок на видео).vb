@@ -18,8 +18,7 @@ gsHtml = HmsRemoveLinebreaks(gsHtml)  ' Удаляем переносы стро
 RegExp = TRegExpr.Create("<section>(.*?)</section>", PCRE_SINGLELINE)
 
 ' Организуем цикл поиска блоков текста в gsHtml
-IF RegExp.Search(gsHtml) THEN
-  DO
+IF RegExp.Search(gsHtml) THEN DO
   ' Получаем данные о видео
   HmsRegExMatch("<a[^>]+href=['""](.*?)['""]" , RegExp.Match, gsLink) ' Ссылка
   HmsRegExMatch("(<h4.*</h4>)"                , RegExp.Match, gsName) ' Наименование

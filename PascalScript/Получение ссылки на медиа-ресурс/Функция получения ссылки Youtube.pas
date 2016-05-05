@@ -1,27 +1,28 @@
-﻿// ---- Получение ссылки на Youtube -------------------------------------------
+﻿///////////////////////////////////////////////////////////////////////////////
+// ---- Получение ссылки на Youtube -------------------------------------------
 Function GetLink_Youtube31(sLink: String): Boolean;
 Var
   sData, sVideoID, sMaxHeight, sSubtitlesLanguage:String;
   hlsUrl, ttsUrl, flp, jsUrl, dashMpdLink, streamMap, playerId, algorithm: String;
-  sType, itag, sig, alg, s, sFile, sVal, sConfig, sHeaders: String ;
+  sType, itag, sig, alg, s, sFile, sVal, sConfig, sHeaders, sMsg: String;
   UrlBase:String = ""; is3D, bSubtitles, bAdaptive: Boolean;
   i, n, w, num, height, priority, minPriority, selHeight, maxHeight: Integer;
   JSON: TJsonObject; RegEx: TRegExpr;
-Begin 
+Begin
   sSubtitlesLanguage :='ru'; minPriority := 90; maxHeight := 1080;
   sHeaders := 'Referer: '+sLink+#13#10+
               'User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36'+#13#10+
               'Origin: http://www.youtube.com'+#13#10;
-  
+
   HmsRegExMatch('--maxheight=(\d+)'    , mpPodcastParameters, sMaxHeight);
   HmsRegExMatch('--sublanguage=(\w{2})', mpPodcastParameters, sSubtitlesLanguage);
-  bSubtitles := (Pos('--subtitles'  , mpPodcastParameters)>0);  
-  bAdaptive  := (Pos('--adaptive'   , mpPodcastParameters)>0);  
+  bSubtitles := (Pos('--subtitles'  , mpPodcastParameters)>0);
+  bAdaptive  := (Pos('--adaptive'   , mpPodcastParameters)>0);
   TryStrToInt(sMaxHeight, maxHeight);
 
   If Not HmsRegExMatch('[\?&]v=([^&]+)'       , sLink, sVideoID) Then
          HmsRegExMatch('/(?:embed|v)/([^\?]+)', sLink, sVideoID);
-  
+
   If sVideoID='' Then Begin
     sData := HmsDownloadURL(sLink, sHeaders, True);
     If Not HmsRegExMatch('youtube.com[^"''>]+v=([^&]+)', sData, sVideoID) Then
@@ -31,11 +32,27 @@ Begin
   If sVideoID='' Then Begin HmsLogMessage(2, 'Невозможно получить Video ID в ссылке Youtube'); Exit; End;
 
   sLink := 'http://www.youtube.com/watch?v='+sVideoID+'&hl=ru&persist_hl=1&has_verified=1';
-  
+
   sData := HmsUtf8Decode(HmsDownloadURL(sLink));
   sData := HmsRemoveLineBreaks(sData);
-  HmsRegExMatch('player.config\s*?=\s*?({.*?});', sData, sConfig);
-  
+
+  If Not HmsRegExMatch('player.config\s*?=\s*?({.*?});', sData, sConfig) Then Begin
+    // Если в загруженной странице нет нужной информации, пробуем немного по-другому
+    sLink := 'http://hms.lostcut.net/youtube/g.php?v='+sVideoID;
+    If sMaxHeight<>''                   Then sLink := sLink+'&max_height='+sMaxHeight;
+    If Trim(mpPodcastMediaFormats )<>'' Then sLink := sLink+'&media_formats='+mpPodcastMediaFormats;
+    If bAdaptive                        Then sLink := sLink+'&adaptive=1';
+    sData := HmsUtf8Decode(HmsDownloadUrl(sLink));
+    If HmsRegExMatch('"reason":"(.*?)"' , sData, sMsg) Then Begin 
+      HmsLogMessage(2 , sMsg); 
+      //VideoMessage(sMsg); 
+    End Else Begin
+      sData := HmsJsonDecode(sData);
+      HmsRegExMatch('"url":"(.*?)"', sData, MediaResourceLink);
+    End;
+    Exit; 
+  End;
+
   JSON := TJsonObject.Create();
   Try
     JSON.LoadFromString(sConfig);
@@ -44,24 +61,24 @@ Begin
     flp         := HmsExpandLink(JSON.S['url'        ], UrlBase);
     jsUrl       := HmsExpandLink(JSON.S['assets\js'  ], UrlBase);
     streamMap   := JSON.S['args\url_encoded_fmt_stream_map'];
-    If bAdaptive AND JSON.B['args\adaptive_fmts'] Then 
+    If bAdaptive AND JSON.B['args\adaptive_fmts'] Then
       streamMap := JSON.S['args\adaptive_fmts'];
     If (streamMap='') AND (hlsUrl='') Then Begin
       HmsLogMessage(2, "Can not found stream map in player config");
       Exit;
     End;
-  Finally 
+  Finally
     JSON.Free;
   End;
   If Copy(jsUrl, 1, 2)='//' Then jsUrl := 'http:'+Trim(jsUrl);
   HmsRegExMatch('/player-([\w_-]+)/', jsUrl, playerId);
   algorithm := HmsDownloadURL('https://hms.lostcut.net/youtube/getalgo.php?jsurl='+HmsHttpEncode(jsUrl));
-  
+
   If hlsUrl<>'' Then Begin
     MediaResourceLink := ' '+hlsUrl;
     sData := HmsDownloadUrl(sLink, sHeaders, true);
     RegEx := TRegExpr.Create('BANDWIDTH=(\d+).*?RESOLUTION=(\d+)x(\d+).*?(http[^#]*)', PCRE_SINGLELINE);
-    try 
+    try
       If RegEx.Search(sData) Then Repeat
         sLink  := ' ' + RegEx.Match(4);
         height := StrToIntDef(RegEx.Match(3), 0);
@@ -74,12 +91,12 @@ Begin
           MediaResourceLink := sLink; selHeight := height;
         End;
       Until Not RegEx.SearchAgain();
-    Finally 
+    Finally
       RegEx.Free();
     End;
-  
+
   End Else If streamMap<>'' Then Begin
-    i:=1; While (i<=Length(streamMap)) Do 
+    i:=1; While (i<=Length(streamMap)) Do
     Begin
       sData := Trim(ExtractStr(streamMap, ',', i));
       sType := HmsHttpDecode(ExtractParam(sData, 'type', '', '&'));
@@ -89,7 +106,7 @@ Begin
       If (Pos('url=', sData)>0) Then Begin
         sLink := ' ' + HmsHttpDecode(ExtractParam(sData, 'url', '', '&'));
         If (Pos('&signature=', sLink)=0) Then Begin
-          sig := HmsHttpDecode(ExtractParam(sData, 'sig', '', '&'));    
+          sig := HmsHttpDecode(ExtractParam(sData, 'sig', '', '&'));
           If (sig='') Then Begin
             sig := HmsHttpDecode(ExtractParam(sData, 's', '', '&'));
             For w:=1 To WordCount(algorithm, ' ') Do Begin
@@ -129,12 +146,12 @@ Begin
         End;
       End;
     End;
-    
+
   End;
-  // Если есть субтитры и в дополнительных параметрах указано их показывать - загружаем 
+  // Если есть субтитры и в дополнительных параметрах указано их показывать - загружаем
   If (bSubtitles AND (ttsUrl<>'')) Then Begin
     sFile := HmsSubtitlesDirectory+'\Youtube\'+PodcastItem.ItemID+'.'+sSubtitlesLanguage+'.srt';
-    sLink := ttsUrl+'&fmt=srt&lang='; 
+    sLink := ttsUrl+'&fmt=srt&lang=';
     If Not HmsDownloadURLToFile(sLink+sSubtitlesLanguage, sFile, 'Accept-Encoding: gzip, deflate') Then
            HmsDownloadURLToFile(sLink+'en'              , sFile, 'Accept-Encoding: gzip, deflate');
     PodcastItem[mpiSubtitleLanguage] := sFile;

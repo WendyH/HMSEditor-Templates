@@ -1,8 +1,9 @@
-﻿// ---- Получение ссылки на vk.com --------------------------------------------
+﻿///////////////////////////////////////////////////////////////////////////////
+// Получение ссылки на vk.com -------------------------------------------------
 Procedure GetLink_VK(sLink: String);
 Var
   sHtml, sVal, host, uid, vkid, vtag, max_hd, no_flv, res, sFileMP3, sFileImg: String;
-  ResolutionList: String ='0:240, 1:360, 2:480, 3:720'; sQAval, sQSel: String;
+  ResolutionList: String ='0:240, 1:360, 2:480, 3:720'; sQAval, sQSel, extra, cat: String;
   i, n, iPriority: Integer = 0; iMinPriority: Integer = 99;
   bQualityLog: Boolean;
 Begin
@@ -10,9 +11,21 @@ Begin
   sHtml := ReplaceStr(sHtml, '\', '');
   host := ''; max_hd := '2';
 
+  sLink := '';
+  HmsRegExMatch('--quality=(\\d+)', mpPodcastParameters, sQSel);
+  if sQSel<>'' Then HmsRegExMatch('"url'+sQSel+'":"(.*?)"', sHtml, sLink);
+  if sLink ='' Then HmsRegExMatch('"url720":"(.*?)"', sHtml, sLink);
+  if sLink ='' Then HmsRegExMatch('"url480":"(.*?)"', sHtml, sLink);
+  if sLink ='' Then HmsRegExMatch('"url360":"(.*?)"', sHtml, sLink);
+  if sLink ='' Then HmsRegExMatch('"url240":"(.*?)"', sHtml, sLink);
+  if sLink<>'' Then Begin
+    MediaResourceLink := HmsJsonDecode(sLink);
+    Exit;
+  End;
+  
   If Not HmsRegExMatch('vtag["'':=\s]+([0-9a-z]+)', sHtml, vtag) Then Begin
     If HmsRegExMatch('(<div[^>]+video_ext_msg.*?</div>)', sHtml, sLink) Then Begin
-      sLink = HmsHtmlToText(sLink);
+      sLink := HmsHtmlToText(sLink);
       HmsLogMessage(2, PodcastItem.ItemOrigin.ItemParent[mpiTitle]+': vk.com сообщает - '+sLink);
 
       sFileMP3 := HmsTempDirectory+'\\sa.mp3';
@@ -38,10 +51,12 @@ Begin
     Exit;
   End;
   HmsRegExMatch('[^a-z]host[=:"''\s]+(.*?)["''&;,]', sHtml, host  );
-  HmsRegExMatch('[^a-z]uid[=:"''\s]+([0-9]+)',       sHtml, uid   );
-  HmsRegExMatch('no_flv.*?(\d)'       ,              sHtml, no_flv);
+  HmsRegExMatch('[^a-z]uid[=:"''\s]+([0-9]+)'      , sHtml, uid   );
+  HmsRegExMatch('no_flv.*?(\d)'                    , sHtml, no_flv);
   HmsRegExMatch('(?>hd":"|hd=|video_max_hd.*?)(\d)', sHtml, max_hd);
-  HmsRegExMatch('[^a-z]vkid[=:"''\s]+([0-9]+)',      sHtml, vkid  );
+  HmsRegExMatch('[^a-z]vkid[=:"''\s]+([0-9]+)'     , sHtml, vkid  );
+  HmsRegExMatch('extra=([\w-]+)'                   , sHtml, extra );
+  HmsRegExMatch('/(\d+)/u\d+/'                     , sHtml, cat   );
   HmsRegExMatch(max_hd+':(\d+)',            ResolutionList, res   );
 
   sQAval := 'Доступное качество: '; sQSel := '';
@@ -65,5 +80,8 @@ Begin
 
   If uid='0' Then MediaResourceLink := host+'assets/videos/'+vtag+''+vkid+'.vk.flv'
   Else            MediaResourceLink := host + uid+'/videos/'+vtag+'.'+res+'.mp4';
-
+  If Trim(extra)<>'' Then MediaResourceLink := MediaResourceLink+'?extra='+extra;
+  If Trim(cat  )<>'' Then MediaResourceLink := ReplaceStr(MediaResourceLink, '/'+uid, '/'+cat+'/'+uid);
+  
+  HmsRegExMatch(";url"+res+"=(.*?)&", sHtml, MediaResourceLink);
 End;
