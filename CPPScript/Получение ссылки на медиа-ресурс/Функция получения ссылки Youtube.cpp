@@ -1,11 +1,11 @@
 ﻿// ------------------------------------------- Получение ссылки на Youtube ----
 bool GetLink_Youtube31(string sLink) {
-  string sData, sVideoID='', sMaxHeight='', sAudio='', sSubtitlesLanguage='ru',
-         sSubtitlesUrl, sFile, sVal, sMsg, sConfig, sHeaders; 
+  string sData, sVideoID='', sMaxHeight='', sAudio='', sSubtitlesLanguage='ru';
+  string sSubtitlesUrl, sFile, sVal, sMsg, sConfig, sHeaders, ttsDef; 
   TJsonObject JSON; TRegExpr RegEx;
-
+  
   sHeaders = 'Referer: '+sLink+#13#10+
-             'User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36'+#13#10+
+             'User-Agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'+#13#10+
              'Origin: http://www.youtube.com'+#13#10;
   
   HmsRegExMatch('--maxheight=(\\d+)'    , mpPodcastParameters, sMaxHeight);
@@ -15,6 +15,7 @@ bool GetLink_Youtube31(string sLink) {
   bool bNotDE     = (Pos('notde=1'      , sLink)>0);  
 
   if (!HmsRegExMatch('[\\?&]v=([^&]+)'       , sLink, sVideoID))
+  if (!HmsRegExMatch('youtu.be/([^&]+)'      , sLink, sVideoID))
        HmsRegExMatch('/(?:embed|v)/([^\\?]+)', sLink, sVideoID);
 
   if (sVideoID=='') return VideoMessage('Невозможно получить Video ID в ссылке Youtube');
@@ -22,7 +23,18 @@ bool GetLink_Youtube31(string sLink) {
   sLink = 'http://www.youtube.com/watch?v='+sVideoID+'&hl=ru&persist_hl=1&has_verified=1';
   
   sData = HmsDownloadURL(sLink, sHeaders, true);
+  //sData = HmsUtf8Decode(sData);
   sData = HmsRemoveLineBreaks(sData);
+  // Если еще не установлена реальная длительность видео - устанавливаем
+  if ((Trim(mpTimeLength)=='') || (RightCopy(mpTimeLength, 6)=='00.000')) {
+    if (HmsRegExMatch2('itemprop="duration"[^>]+content="..(\\d+)M(\\d+)S', sData, sVal, sMsg)) {
+      PodcastItem[mpiTimeLength] = StrToInt(sVal)*60+StrToInt(sMsg);
+    } else {
+      sVal = HmsDownloadURL('http://www.youtube.com/get_video_info?html5=1&c=WEB&cver=html5&cplayer=UNIPLAYER&hl=ru&video_id='+sVideoID, sHeaders, true);
+      if (HmsRegExMatch('length_seconds=(\\d+)', sData, sMsg))
+        PodcastItem[mpiTimeLength] = StrToInt(sMsg);
+    }
+  }
   if (!HmsRegExMatch('player.config\\s*?=\\s*?({.*?});', sData, sConfig)) {
     // Если в загруженной странице нет нужной информации, пробуем немного по-другому
     sLink = 'http://hms.lostcut.net/youtube/g.php?v='+sVideoID;
@@ -51,7 +63,7 @@ bool GetLink_Youtube31(string sLink) {
   try {
     JSON.LoadFromString(sConfig);
     hlsUrl      = HmsExpandLink(JSON.S['args\\hlsvp' ], UrlBase);
-    ttsUrl      = HmsExpandLink(JSON.S['args\\ttsurl'], UrlBase);
+    ttsUrl      = HmsExpandLink(JSON.S['args\\caption_tracks'], UrlBase);
     flp         = HmsExpandLink(JSON.S['url'         ], UrlBase);
     jsUrl       = HmsExpandLink(JSON.S['assets\\js'  ], UrlBase);
     streamMap   = JSON.S['args\\url_encoded_fmt_stream_map'];
@@ -136,6 +148,10 @@ bool GetLink_Youtube31(string sLink) {
               }
             } else if ((height>selHeight) && (height<= maxHeight)) {
               MediaResourceLink = sLink; selHeight = height;
+            
+            } else if ((height>=selHeight) && (height<= maxHeight) && (itag in ([18,22,37,38,82,83,84,85]))) {
+              // Если выоста такая же, но формат MP4 - то выбираем именно его (делаем приоритет MP4)
+              MediaResourceLink = sLink; selHeight = height;
             }
         }
       }
@@ -144,11 +160,34 @@ bool GetLink_Youtube31(string sLink) {
   }
   // Если есть субтитры и в дополнительных параметрах указано их показывать - загружаем 
   if (bSubtitles && (ttsUrl!='')) {
-    sFile = HmsSubtitlesDirectory+'\\Youtube\\'+PodcastItem.ItemID+'.'+sSubtitlesLanguage+'.srt';
-    sLink = ttsUrl+'&fmt=srt&lang='; 
-    if (!HmsDownloadURLToFile(sLink+sSubtitlesLanguage, sFile, 'Accept-Encoding: gzip, deflate')) {
-      HmsDownloadURLToFile(sLink+'en'                 , sFile, 'Accept-Encoding: gzip, deflate');
+    string sTime1, sTime2; float nStart, nDur;
+    sLink = ''; n = WordCount(ttsUrl, ',');
+    for (i=1; i <= n; i++) {
+      sData = ExtractWord(i, ttsUrl, ',');
+      sType = HmsPercentDecode(ExtractParam(sData, 'lc', '', '&'));
+      sVal  = HmsPercentDecode(ExtractParam(sData, 'u' , '', '&'));
+      if (sType == 'en') sLink = sVal;
+      if (sType == sSubtitlesLanguage) { sLink = sVal; break; }
     }
-    PodcastItem[mpiSubtitleLanguage] = sFile;
+    if (sLink != '') {
+      sData = HmsDownloadURL(sLink, sHeaders, true);
+      sMsg  = ''; i = 0;
+      RegEx = TRegExpr.Create('(<(text|p).*?</(text|p)>)', PCRE_SINGLELINE); // Convert to srt format
+      try {
+        if (RegEx.Search(sData)) do {
+          if      (HmsRegExMatch('start="([\\d\\.]+)', RegEx.Match, sVal)) nStart = StrToFloat(ReplaceStr(sVal, '.', ','))*1000;
+          else if (HmsRegExMatch('t="(\\d+)'         , RegEx.Match, sVal)) nStart = StrToFloat(sVal);
+          if      (HmsRegExMatch('dur="([\\d\\.]+)'  , RegEx.Match, sVal)) nDur   = StrToFloat(ReplaceStr(sVal, '.', ','))*1000;
+          else if (HmsRegExMatch('d="(\\d+)'         , RegEx.Match, sVal)) nDur   = StrToFloat(sVal);
+          sTime1 = HmsTimeFormat(Int(nStart/1000))+','+RightCopy(Str(nStart), 3);
+          sTime2 = HmsTimeFormat(Int((nStart+nDur)/1000))+','+RightCopy(Str(nStart+nDur), 3);
+          sMsg += Format("%d\n%s --> %s\n%s\n\n", [i, sTime1, sTime2, HmsHtmlToText(HmsHtmlToText(RegEx.Match(0), 65001))]);
+          i++;
+        } while (RegEx.SearchAgain());
+      } finally { RegEx.Free(); }
+      sFile = HmsSubtitlesDirectory+'\\Youtube\\'+PodcastItem.ItemID+'.'+sSubtitlesLanguage+'.srt';
+      HmsStringToFile(sMsg, sFile);
+      PodcastItem[mpiSubtitleLanguage] = sFile;
+    }
   }
 }
